@@ -9,7 +9,9 @@ import {
   SliderTrack,
   SliderThumb,
   SliderFilledTrack,
+  IconButton,
 } from "@chakra-ui/react";
+import { ChevronLeftIcon, ChevronRightIcon } from "@chakra-ui/icons";
 import type { AlgorithmState } from "../types";
 
 interface AlgorithmControlsProps {
@@ -19,6 +21,7 @@ interface AlgorithmControlsProps {
   onReset: () => void;
   onSpeedChange: (speed: number) => void;
   onAlgorithmChange: (algorithm: string) => void;
+  onStepChange: (step: number) => void;
   algorithms: { value: string; label: string }[];
 }
 
@@ -29,9 +32,9 @@ const AlgorithmControls = ({
   onReset,
   onSpeedChange,
   onAlgorithmChange,
+  onStepChange,
   algorithms,
 }: AlgorithmControlsProps) => {
-  console.log(state);
   return (
     <Box bg="white" p={4} shadow="sm" rounded="lg">
       <VStack spacing="4" align="stretch">
@@ -89,9 +92,25 @@ const AlgorithmControls = ({
           </Slider>
         </Box>
 
-        <Text>
-          Step: {state.currentStep} / {state.totalSteps}
-        </Text>
+        <HStack justify="space-between" align="center">
+          <IconButton
+            aria-label="Previous step"
+            icon={<ChevronLeftIcon />}
+            onClick={() => onStepChange(state.currentStep - 1)}
+            isDisabled={state.isRunning || state.currentStep === 0}
+          />
+          <Text>
+            Step: {state.currentStep} / {state.totalSteps}
+          </Text>
+          <IconButton
+            aria-label="Next step"
+            icon={<ChevronRightIcon />}
+            onClick={() => onStepChange(state.currentStep + 1)}
+            isDisabled={
+              state.isRunning || state.currentStep === state.totalSteps
+            }
+          />
+        </HStack>
       </VStack>
     </Box>
   );

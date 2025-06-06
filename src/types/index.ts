@@ -1,6 +1,12 @@
 export type AlgorithmType = 'pathfinding' | 'sorting' | 'graph';
 
-export type PathfindingAlgorithm = 'astar' | 'dijkstra' | 'bfs' | 'dfs';
+export type PathfindingAlgorithm =
+    | 'dijkstra'
+    | 'astar'
+    | 'bfs'
+    | 'dfs'
+    | 'greedyBestFirst'
+    | 'bidirectionalSearch';
 export type SortingAlgorithm = 'bubble' | 'quick' | 'merge' | 'heap';
 export type GraphAlgorithm = 'kruskal' | 'prim' | 'floydWarshall';
 

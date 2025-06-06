@@ -1,9 +1,24 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Box, Grid, useToken, VStack } from "@chakra-ui/react";
+import {
+  Box,
+  Grid,
+  useToken,
+  VStack,
+  HStack,
+  Text,
+  Tooltip,
+} from "@chakra-ui/react";
 import type { Node, PathfindingAlgorithm } from "../types";
 import type { Step } from "../algorithms/pathfinding";
 import AlgorithmControls from "../components/AlgorithmControls";
-import { dijkstra, astar, bfs, dfs } from "../algorithms/pathfinding";
+import {
+  dijkstra,
+  astar,
+  bfs,
+  dfs,
+  greedyBestFirst,
+  bidirectionalSearch,
+} from "../algorithms/pathfinding";
 
 const GRID_ROWS = 20;
 const GRID_COLS = 30;
@@ -52,7 +67,13 @@ const PathfindingVisualizer = () => {
   const [totalSteps, setTotalSteps] = useState(0);
   const [selectedAlgorithm, setSelectedAlgorithm] =
     useState<PathfindingAlgorithm>("dijkstra");
-  const [blue500] = useToken("colors", ["blue.500"]);
+  const [currentStepInfo, setCurrentStepInfo] = useState<string>("");
+  const [blue500, green500, red500, gray700] = useToken("colors", [
+    "blue.500",
+    "green.500",
+    "red.500",
+    "gray.700",
+  ]);
 
   const animationFrameId = useRef<number>();
   const isMousePressed = useRef(false);
@@ -132,18 +153,32 @@ const PathfindingVisualizer = () => {
     });
   }, []);
 
+  const updateStepInfo = useCallback(
+    (step: Step) => {
+      const algorithm =
+        selectedAlgorithm.charAt(0).toUpperCase() + selectedAlgorithm.slice(1);
+      if (step.path.length > 0) {
+        setCurrentStepInfo(`${algorithm} found a path!`);
+      } else {
+        setCurrentStepInfo(`${algorithm} is exploring the grid...`);
+      }
+    },
+    [selectedAlgorithm]
+  );
+
   const startVisualization = useCallback(() => {
     const algorithmMap = {
       dijkstra,
       astar,
       bfs,
       dfs,
+      greedyBestFirst,
+      bidirectionalSearch,
     };
 
     const steps = algorithmMap[selectedAlgorithm](grid);
-    console.log(steps);
     if (steps.length === 0) {
-      return; // Don't start visualization if there are no steps
+      return;
     }
     stepsRef.current = steps;
     setTotalSteps(steps.length - 1);
@@ -151,20 +186,29 @@ const PathfindingVisualizer = () => {
     setIsRunning(true);
   }, [grid, selectedAlgorithm]);
 
+  const handleStepChange = useCallback(
+    (step: number) => {
+      if (step < 0 || step > stepsRef.current.length - 1) return;
+      setCurrentStep(step);
+      visualizeStep(step);
+      updateStepInfo(stepsRef.current[step]);
+    },
+    [visualizeStep, updateStepInfo]
+  );
+
   useEffect(() => {
     if (!isRunning) return;
 
     const animate = () => {
       setCurrentStep((prevStep) => {
-        // Stop if we've reached the end
         if (prevStep >= stepsRef.current.length - 1) {
           setIsRunning(false);
           return prevStep;
         }
 
-        // Visualize the next step
         const nextStep = prevStep + 1;
         visualizeStep(nextStep);
+        updateStepInfo(stepsRef.current[nextStep]);
         return nextStep;
       });
     };
@@ -179,13 +223,15 @@ const PathfindingVisualizer = () => {
     return () => {
       clearInterval(intervalId);
     };
-  }, [isRunning, speed, visualizeStep]);
+  }, [isRunning, speed, visualizeStep, updateStepInfo]);
 
   const algorithms = [
     { value: "dijkstra", label: "Dijkstra's Algorithm" },
     { value: "astar", label: "A* Search" },
     { value: "bfs", label: "Breadth First Search" },
     { value: "dfs", label: "Depth First Search" },
+    { value: "greedyBestFirst", label: "Greedy Best-First Search" },
+    { value: "bidirectionalSearch", label: "Bidirectional Search" },
   ];
 
   return (
@@ -204,54 +250,95 @@ const PathfindingVisualizer = () => {
           onPause={() => setIsRunning(false)}
           onReset={resetGrid}
           onSpeedChange={setSpeed}
-          onAlgorithmChange={(algo) =>
-            setSelectedAlgorithm(algo as PathfindingAlgorithm)
-          }
+          onAlgorithmChange={(algo) => {
+            setSelectedAlgorithm(algo as PathfindingAlgorithm);
+            resetGrid();
+          }}
+          onStepChange={handleStepChange}
           algorithms={algorithms}
         />
 
-        <Box
-          bg="white"
-          p={4}
-          shadow="sm"
-          rounded="lg"
-          onMouseLeave={handleMouseUp}
-        >
-          <Grid
-            templateColumns={`repeat(${GRID_COLS}, 25px)`}
-            gap={0}
-            justifyContent="center"
-          >
-            {grid.map((row, rowIdx) =>
-              row.map((node, colIdx) => (
-                <Box
-                  key={`${rowIdx}-${colIdx}`}
-                  w="25px"
-                  h="25px"
-                  border="1px"
-                  borderColor="gray.200"
-                  bg={
-                    node.isStart
-                      ? "green.500"
-                      : node.isEnd
-                      ? "red.500"
-                      : node.isPath
-                      ? blue500
-                      : node.isVisited
-                      ? "blue.200"
-                      : node.isWall
-                      ? "gray.700"
-                      : "white"
-                  }
-                  transition="all 0.3s"
-                  cursor={isRunning ? "default" : "pointer"}
-                  onMouseDown={() => handleMouseDown(rowIdx, colIdx)}
-                  onMouseEnter={() => handleMouseEnter(rowIdx, colIdx)}
-                  onMouseUp={handleMouseUp}
-                />
-              ))
-            )}
-          </Grid>
+        <Box bg="white" p={4} shadow="sm" rounded="lg">
+          <HStack spacing={4} mb={4}>
+            <Box>
+              <Text fontWeight="bold">Legend:</Text>
+              <HStack spacing={4}>
+                <HStack>
+                  <Box w={4} h={4} bg={green500} rounded="sm" />
+                  <Text>Start</Text>
+                </HStack>
+                <HStack>
+                  <Box w={4} h={4} bg={red500} rounded="sm" />
+                  <Text>End</Text>
+                </HStack>
+                <HStack>
+                  <Box w={4} h={4} bg={blue500} rounded="sm" />
+                  <Text>Path</Text>
+                </HStack>
+                <HStack>
+                  <Box w={4} h={4} bg="blue.200" rounded="sm" />
+                  <Text>Visited</Text>
+                </HStack>
+                <HStack>
+                  <Box w={4} h={4} bg={gray700} rounded="sm" />
+                  <Text>Wall</Text>
+                </HStack>
+              </HStack>
+            </Box>
+            <Text fontWeight="bold">{currentStepInfo}</Text>
+          </HStack>
+
+          <Box position="relative">
+            <Grid
+              templateColumns={`repeat(${GRID_COLS}, 25px)`}
+              gap={0}
+              justifyContent="center"
+              onMouseLeave={handleMouseUp}
+            >
+              {grid.map((row, rowIdx) =>
+                row.map((node, colIdx) => (
+                  <Tooltip
+                    key={`${rowIdx}-${colIdx}`}
+                    label={`${
+                      node.isStart ? "Start" : node.isEnd ? "End" : ""
+                    } ${node.isWall ? "Wall" : ""} ${
+                      node.isVisited ? "Visited" : ""
+                    } ${node.isPath ? "Path" : ""}`}
+                    placement="top"
+                  >
+                    <Box
+                      w="25px"
+                      h="25px"
+                      border="1px"
+                      borderColor="gray.200"
+                      bg={
+                        node.isStart
+                          ? green500
+                          : node.isEnd
+                          ? red500
+                          : node.isPath
+                          ? blue500
+                          : node.isVisited
+                          ? "blue.200"
+                          : node.isWall
+                          ? gray700
+                          : "white"
+                      }
+                      transition="all 0.3s"
+                      cursor={isRunning ? "default" : "pointer"}
+                      onMouseDown={() => handleMouseDown(rowIdx, colIdx)}
+                      onMouseEnter={() => handleMouseEnter(rowIdx, colIdx)}
+                      onMouseUp={handleMouseUp}
+                      _hover={{
+                        transform: "scale(1.1)",
+                        zIndex: 1,
+                      }}
+                    />
+                  </Tooltip>
+                ))
+              )}
+            </Grid>
+          </Box>
         </Box>
       </VStack>
     </Box>
