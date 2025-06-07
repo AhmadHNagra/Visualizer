@@ -18,11 +18,11 @@ import type { Step, Graph, GraphNode, GraphEdge } from "../algorithms/graph";
 import AlgorithmControls from "../components/AlgorithmControls";
 import { kruskal, prim, floydWarshall } from "../algorithms/graph";
 
-const CANVAS_WIDTH = 800;
-const CANVAS_HEIGHT = 600;
-const NODE_RADIUS = 20;
-const MIN_NODE_DISTANCE = NODE_RADIUS * 3; // Minimum distance between nodes
-const PADDING = NODE_RADIUS * 2; // Padding from canvas edges
+const CANVAS_WIDTH = 1920;
+const CANVAS_HEIGHT = 1080;
+const NODE_RADIUS = 25;
+const MIN_NODE_DISTANCE = NODE_RADIUS * 3.5; // Minimum distance between nodes
+const PADDING = NODE_RADIUS * 2.5; // Padding from canvas edges
 const ANIMATION_SPEED_MAP = {
   1: 1000, // 1x speed (slowest)
   2: 800,
@@ -116,6 +116,24 @@ const generateRandomGraph = (): Graph => {
   return { nodes, edges };
 };
 
+// Add this function to handle high DPI displays
+const setupCanvas = (canvas: HTMLCanvasElement) => {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+
+  // Set the canvas size accounting for device pixel ratio
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+
+  // Scale the context to ensure correct drawing
+  const ctx = canvas.getContext("2d")!;
+  ctx.scale(dpr, dpr);
+
+  // Set the canvas CSS size
+  canvas.style.width = `${rect.width}px`;
+  canvas.style.height = `${rect.height}px`;
+};
+
 const GraphVisualizer = () => {
   const [graph, setGraph] = useState<Graph>(() => generateRandomGraph());
   const [isRunning, setIsRunning] = useState(false);
@@ -146,6 +164,7 @@ const GraphVisualizer = () => {
     stepsRef.current = [];
   }, []);
 
+  // Update the drawGraph function for better visibility
   const drawGraph = useCallback(
     (ctx: CanvasRenderingContext2D, step?: Step) => {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -165,28 +184,36 @@ const GraphVisualizer = () => {
           )
         ) {
           ctx.strokeStyle = green500;
-          ctx.lineWidth = 4; // Thicker line for MST edges
+          ctx.lineWidth = 5; // Increased from 4
         } else if (
           step?.visitedEdges.some(
             (e) => e.source === edge.source && e.target === edge.target
           )
         ) {
           ctx.strokeStyle = red500;
-          ctx.lineWidth = 3; // Medium line for visited edges
+          ctx.lineWidth = 4; // Increased from 3
         } else {
           ctx.strokeStyle = blue500;
-          ctx.lineWidth = 2; // Normal line for unvisited edges
+          ctx.lineWidth = 3; // Increased from 2
         }
 
         ctx.stroke();
 
-        // Draw weight with background for better visibility
+        // Draw weight with improved visibility
         const midX = (sourceNode.x + targetNode.x) / 2;
         const midY = (sourceNode.y + targetNode.y) / 2;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-        ctx.fillRect(midX - 15, midY - 10, 30, 20);
+
+        // Add a larger background for better readability
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.fillRect(midX - 20, midY - 15, 40, 30);
+
+        // Add a border around the weight
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(midX - 20, midY - 15, 40, 30);
+
         ctx.fillStyle = "black";
-        ctx.font = "bold 14px Arial";
+        ctx.font = "bold 16px Arial"; // Increased font size
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(edge.weight.toString(), midX, midY);
@@ -204,12 +231,22 @@ const GraphVisualizer = () => {
         }
 
         ctx.fill();
-        ctx.strokeStyle = "white";
-        ctx.lineWidth = 2;
-        ctx.stroke();
 
+        // Add a white border with shadow for better visibility
+        ctx.shadowColor = "rgba(0, 0, 0, 0.2)";
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        // Draw node label with improved visibility
         ctx.fillStyle = "white";
-        ctx.font = "bold 14px Arial";
+        ctx.font = "bold 16px Arial"; // Increased font size
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(node.id, node.x, node.y);
